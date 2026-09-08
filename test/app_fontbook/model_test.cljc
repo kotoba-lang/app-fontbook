@@ -1,6 +1,6 @@
 (ns app-fontbook.model-test
   (:require [app-fontbook.model :as model]
-            [clojure.string :as str]
+            [kotoba.lang.text :as str]
             [app-fontbook.page :as page]
             [app-fontbook.source :as source]
             [clojure.test :refer [deftest is testing]]
