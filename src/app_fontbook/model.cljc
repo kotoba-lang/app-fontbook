@@ -4,7 +4,7 @@
   One capability, `fs/browse`, to find the font files. Parsing them is
   `kotoba-lang/glyph`'s job and reading them is the provider's; this namespace
   decides what a face *is* and how faces of one family relate."
-  (:require [clojure.string :as str]
+  (:require [kotoba.lang.text :as str]
             [mokuroku.item :as item]
             [mokuroku.source :as source]))
 
@@ -42,7 +42,7 @@
   #{"regular" "book" "roman" "normal" "text"})
 
 (defn normalize-style [style]
-  (let [s (str/lower-case (str/trim (str style)))]
+  (let [s (str/lower (str/trim (str style)))]
     (cond
       (str/blank? s) "Regular"
       (contains? canonical-regular s) "Regular"
@@ -64,7 +64,7 @@
   unknown weight is not a regular weight."
   [{:keys [weight style]}]
   (or (when (number? weight) weight)
-      (some->> (str/lower-case (str (or style "")))
+      (some->> (str/lower (str (or style "")))
                (re-find #"thin|extralight|ultralight|light|regular|normal|book|roman|text|medium|semibold|demibold|bold|extrabold|ultrabold|black|heavy")
                (get weight-names))))
 
