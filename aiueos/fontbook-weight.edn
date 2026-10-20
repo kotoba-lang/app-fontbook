@@ -1,0 +1,19 @@
+;; app-fontbook — itonami（dapp）の aiueos アプリ記述子（notes.edn 形）。
+;; 判定コアは aiueos/fontbook_weight.cljk（style 正規化・重み・同一性）。
+;; 正本は src/app_fontbook/model.cljk。pure（:effects #{}）。
+{:aiueos/component :app/fontbook-weight
+ :aiueos/kind :app
+ :aiueos/trust :untrusted
+ :aiueos/source "fontbook_weight.cljk"
+ :aiueos/wasm "fontbook_weight.wasm"
+ :aiueos/entry "main"
+ :aiueos/args []
+ :aiueos/imports #{}
+ :aiueos/exports #{:app/main
+                   :app/style-regular
+                   :app/weight-of
+                   :app/weight-preference
+                   :app/face-id-ok
+                   :app/command-admissible}
+ :aiueos/effects #{}
+ :aiueos/limits {:memory-pages 16 :fuel 5000000}}
