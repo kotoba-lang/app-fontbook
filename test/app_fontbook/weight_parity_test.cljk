@@ -1,0 +1,34 @@
+(ns app-fontbook.weight-parity-test
+  "aiueos/fontbook_weight.cljk（判定コア）と実物の model.cljk の parity。
+  normalize-style / derive-weight / face-id / commands が guest の判定と一致する。"
+  (:require [clojure.test :refer [deftest is testing]]
+            [app-fontbook.model :as model]))
+
+(deftest style-matches-guest
+  (testing "guest test-style: 空白・canonical-regular は Regular、他は capitalize"
+    (is (= "Regular" (model/normalize-style nil)))
+    (is (= "Regular" (model/normalize-style "  book  ")))
+    (is (= "Regular" (model/normalize-style "Text")))
+    (is (= "Bold Italic" (model/normalize-style "bold italic")))))
+
+(deftest weight-matches-guest
+  (testing "guest test-weight: thin=100 .. black/heavy=900"
+    (is (= 100 (model/derive-weight {:style "Thin"})))
+    (is (= 400 (model/derive-weight {:style "Book"})))
+    (is (= 600 (model/derive-weight {:style "Semibold"})))
+    (is (= 900 (model/derive-weight {:style "Black"}))))
+  (testing "guest test-preference: ファイル宣言が style 名に優先"
+    (is (= 350 (model/derive-weight {:weight 350 :style "Bold"}))))
+  (testing "guest test-fail-closed: 未知の重みは nil（400 にしない）"
+    (is (nil? (model/derive-weight {:style "Condensed"})))
+    (is (nil? (model/derive-weight {})))))
+
+(deftest surface-matches-guest
+  (testing "guest test-id: face-id は [family, normalized-style]"
+    (is (= ["Acme" "Regular"] (model/face-id {:family "Acme" :style "book"})))
+    (is (= (model/face-id {:family "Acme" :style "Book" :path "/sys/a.otf"})
+           (model/face-id {:family "Acme" :style "regular" :path "/u/a.otf"}))))
+  (testing "guest test-command: install / remove は無い"
+    (is (= #{:open :quicklook :copy-path :export} model/commands))
+    (is (not (contains? model/commands :install)))
+    (is (not (contains? model/commands :remove)))))

@@ -1,0 +1,92 @@
+(ns fontbook.weight
+  "fontbook 判定コア — itonami dapp bundle（pure, :effects #{}）。
+
+  フェイス（書体）の正規化・重み・同一性の判定（正本:
+  src/app_fontbook/model.cljk）:
+
+  - **style の正規化**: 空白・canonical-regular（regular / book / roman /
+    normal / text）はすべて Regular。そうでなければ単語を capitalize。
+    「正規化しなければ、1 つの family が 3 つの Regular 行に分かれて
+    3 つのフェイスに見える」。
+  - **重みは数値**（CSS numeric weights: thin=100 .. black/heavy=900）。
+    「style 文字列でソートすると Black が Bold が Light の前に来て、
+    重み順に読めるが 2 箇所で逆」。
+  - **derive-weight はファイル宣言 → style 名の順**。どちらも無ければ
+    **nil（400 と推定しない）** —— 「未知の重みは regular ではない」。
+  - **face-id は [family, normalized-style]**（パスではない。「同じフェイスは
+    システムとユーザーに二重に導入されうる。パスで鍵にすると区別のつかない
+    2 行になる」）。
+  - コマンドは **open / quicklook / copy-path / export のみ**（install /
+    remove は無い —— 「現在レンダリング中のフォントを外せる viewer は
+    別のもっと危険なプログラム」）。
+
+  style-regular: 1 = Regular 行に正規化 / 0 = capitalize 形
+  weight-of: name-code 0 thin(100) / 1 extralight|ultralight(200) / 2 light(300)
+    / 3 regular 系(400) / 4 medium(500) / 5 semibold|demibold(600)
+    / 6 bold(700) / 7 extrabold|ultrabold(800) / 8 black|heavy(900)
+    / それ以外 = -1（不明 = 400 にしない）
+  weight-preference: 0 = ファイル宣言 / 1 = style 由来 / 2 = 不明
+  face-id-ok: 1 = [family, style] で鍵 / 0 = パス等（違反）
+  command-admissible: 1 = 0..3（open/quicklook/copy-path/export）の内
+
+  実行 host はスカラーのみ = KIR v3 / i64/direct ABI（kernel/selfhost 両対応）。
+
+  テストはゼロ引数 test-*、戻り 1/0:
+  <amu> test aiueos/fontbook_weight.cljk"
+  (:export [main style-regular weight-of weight-preference face-id-ok
+            command-admissible test-style test-weight test-preference
+            test-id test-command test-fail-closed]))
+
+(defn main [] :i64
+  0)
+
+(defn style-regular [is-blank :i64 in-canonical-set :i64] :i64
+  (if (or (= is-blank 1) (= in-canonical-set 1)) 1 0))
+
+(defn weight-of [name-code :i64] :i64
+  (if (= name-code 0) 100
+    (if (= name-code 1) 200
+      (if (= name-code 2) 300
+        (if (= name-code 3) 400
+          (if (= name-code 4) 500
+            (if (= name-code 5) 600
+              (if (= name-code 6) 700
+                (if (= name-code 7) 800
+                  (if (= name-code 8) 900 -1))))))))))
+
+(defn weight-preference [has-declared :i64 has-style-match :i64] :i64
+  (if (= has-declared 1)
+    0
+    (if (= has-style-match 1) 1 2)))
+
+(defn face-id-ok [keyed-family-style :i64 keyed-by-path :i64] :i64
+  (if (and (= keyed-family-style 1) (= keyed-by-path 0)) 1 0))
+
+(defn command-admissible [cmd :i64] :i64
+  (if (and (>= cmd 0) (<= cmd 3)) 1 0))
+
+;; --- tests（戻り 1 = pass） ------------------------------------------------
+
+(defn test-style [] :i64
+  ;; 空白・canonical-regular は Regular
+  (if (= (+ (style-regular 1 0) (style-regular 0 1) (style-regular 0 0)) 2) 1 0))
+
+(defn test-weight [] :i64
+  ;; thin=100 .. black=900、未知は -1（400 にしない）
+  (if (= (+ (weight-of 0) (weight-of 3) (weight-of 8) (weight-of 99)) 1399) 1 0))
+
+(defn test-preference [] :i64
+  ;; ファイル宣言 → style → 不明（nil）
+  (if (= (+ (weight-preference 1 1) (weight-preference 0 1) (weight-preference 0 0)) 3) 1 0))
+
+(defn test-id [] :i64
+  ;; [family, style] で鍵。パス不可
+  (if (= (+ (face-id-ok 1 0) (face-id-ok 1 1) (face-id-ok 0 1)) 1) 1 0))
+
+(defn test-command [] :i64
+  ;; install / remove は無い
+  (if (= (+ (command-admissible 0) (command-admissible 3) (command-admissible 4) (command-admissible 5)) 2) 1 0))
+
+(defn test-fail-closed [] :i64
+  ;; 未知の重みは不明のまま（既定 400 を作らない）
+  (if (= (+ (weight-of -1) (weight-preference 0 0)) 1) 1 0))
